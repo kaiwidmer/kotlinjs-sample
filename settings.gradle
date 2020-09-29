@@ -1,0 +1,3 @@
+rootProject.name = 'charlie'
+include ':js'
+include ':server'

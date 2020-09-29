@@ -1,0 +1,68 @@
+plugins {
+    id 'application'
+    id 'org.jetbrains.kotlin.jvm' version '1.4.10'
+    id 'org.jetbrains.kotlin.plugin.serialization' version "1.4.10"
+    id 'com.github.johnrengelman.shadow' version "5.0.0"
+}
+
+group 'ch.charlie'
+version '0.0.1'
+mainClassName = "io.ktor.server.netty.EngineMain"
+
+sourceSets {
+    main.kotlin.srcDirs = main.java.srcDirs = ['src/main/kotlin']
+    test.kotlin.srcDirs = test.java.srcDirs = ['test/main/kotlin']
+    main.resources.srcDirs = ['src/main/resources']
+    test.resources.srcDirs = ['src/test/resources']
+}
+
+repositories {
+    mavenLocal()
+    jcenter()
+    maven { url 'https://kotlin.bintray.com/ktor' }
+    maven { url 'https://kotlin.bintray.com/kotlin-js-wrappers' }
+    maven { url 'https://kotlin.bintray.com/kotlinx' }
+}
+
+dependencies {
+    implementation "io.ktor:ktor-server-netty:$ktor_version"
+    implementation "io.ktor:ktor-server-core:$ktor_version"
+    implementation "io.ktor:ktor-client-core:$ktor_version"
+    implementation "io.ktor:ktor-client-core-jvm:$ktor_version"
+    implementation "io.ktor:ktor-client-json-jvm:$ktor_version"
+    implementation "io.ktor:ktor-client-apache:$ktor_version"
+    implementation "io.ktor:ktor-client-serialization-jvm:$ktor_version"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.0-RC2"
+    implementation "io.ktor:ktor-html-builder:$ktor_version"
+    implementation "org.jetbrains:kotlin-css-jvm:1.0.0-pre.31-kotlin-1.2.41"
+}
+
+def downloadTranslation(Object... locales) {
+    def readOnlyKey = "6QDRA0Pwf3-pV1flvdH7KXYmTZPuxirL"
+    for (locale in locales) {
+        println "fetching locale " + locale[1]
+        def targetFile = new File("$projectDir/src/main/resources/" + locale[0] + ".properties")
+        targetFile.createNewFile()
+        targetFile.text = ['curl', "https://localise.biz/api/export/locale/" + locale[1] + ".properties?key=" + readOnlyKey].execute().text.replaceAll("<!--[\\s\\S]*?-->", "")
+    }
+}
+
+shadowJar {
+    manifest {
+        attributes 'Main-Class': mainClassName
+    }
+}
+
+task copyJs(type: Copy) {
+    from '../js/build/distributions/'
+    into 'src/main/resources/static'
+}
+
+copyJs.dependsOn(":js:browserProductionWebpack")
+
+compileKotlin.dependsOn(copyJs)
+
+task localise { task ->
+    downloadTranslation(["strings", "de-CH"])
+}
+build.dependsOn localise
